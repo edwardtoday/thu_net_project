@@ -9,13 +9,14 @@
 #define CONSTANTS_H_
 
 #define DEBUG_OUTPUT
-#define DEBUG_MSG_HDR			"Debug output message:\n"
-#define DEBUG_MSG_TAIL			"\nEnd of debug output message.\n"
+#define DEBUG_MSG_HDR			" Debug output message \n"
+#define DEBUG_MSG_TAIL			"\n End of debug output message \n"
 
 #define BUFSIZE					1024
 #define DIRSIZE					256
 #define LOGINBUFSIZE			64
 #define CMDSIZE					256
+#define ARGSIZE					250
 
 #define IP_ADDR					1
 #define HOSTNAME_ADDR			2

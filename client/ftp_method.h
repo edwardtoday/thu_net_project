@@ -29,6 +29,6 @@ int ftp_get(char *filename);
 int ftp_put(char *filename);
 int ftp_pwd(char *path);
 int ftp_dir();
-int ftp_cd(char *dir);
+int ftp_cd();
 
 #endif /* FTP_METHOD_H_ */

@@ -32,6 +32,7 @@ extern char* addr;
 extern char* username;
 extern char* password;
 extern int port;
+extern char cmd_argu[ARGSIZE];
 
 void debug_output(const string msg) {
 	cout << DEBUG_MSG_HDR << msg << DEBUG_MSG_TAIL;
@@ -129,17 +130,38 @@ int ftp_connect(const char *addr, const int addr_type, const int port) {
 	return 0;
 }
 
-bool ftp_send_cmd(const char *command) {
-	return (send(sockfd, command, strlen(command), 0) != -1);
+int ftp_send_buf() {
+	buf[strlen(buf)] = '\0';
+#ifdef DEBUG_OUTPUT
+	cout << DEBUG_MSG_HDR;
+	printf(buf);
+	cout << DEBUG_MSG_TAIL;
+#endif
+	if (send(sockfd, buf, strlen(buf), 0) != strlen(buf))
+		err_handle(SENDCMD_ERROR);
 }
 
-bool ftp_recv_response() {
-	memset(buf, 0, BUFSIZE);
-	if ((numbytes = recv(sockfd, buf, BUFSIZE, 0)) == -1)
-		return false;
+int ftp_send_cmd(const char *command) {
+	strcpy(buf, command);
+	ftp_send_buf();
+}
+
+int ftp_recv_response() {
+	do {
+#ifdef DEBUG_OUTPUT
+		cout << DEBUG_MSG_HDR << "receiving data..." << DEBUG_MSG_TAIL;
+#endif
+		numbytes = recv(sockfd, buf, BUFSIZE, 0);
+	} while (numbytes == 0);
 	buf[numbytes] = '\0';
 	printf("Recv: %s", buf);
+	if (buf == NULL)
+		err_handle(RECVRESP_ERROR);
 	return true;
+}
+
+void reset(char *tar, const int tar_size) {
+	memset(tar, 0, tar_size);
 }
 
 void reset_cmd() {
@@ -153,33 +175,22 @@ void reset_buf() {
 int ftp_login(const char *user, const char *pass) {
 	ftp_recv_response();
 
-	reset_cmd();
-	strcpy(cmd, "USER ");
-	strcat(cmd, user);
-	strcat(cmd, "\r\n");
+	reset(cmd, CMDSIZE);
+	sprintf(cmd, "USER %s\r\n", user);
+	ftp_send_cmd(cmd);
+	ftp_recv_response();
 
-	if (!ftp_send_cmd(cmd))
-		err_handle(SENDCMD_ERROR);
-
-	if (!ftp_recv_response())
-		err_handle(RECVRESP_ERROR);
-
-	reset_cmd();
-	strcpy(cmd, "PASS ");
-	strcat(cmd, pass);
-	strcat(cmd, "\r\n");
-
-	if (!ftp_send_cmd(cmd))
-		err_handle(SENDCMD_ERROR);
-
-	if (!ftp_recv_response())
-		err_handle(RECVRESP_ERROR);
+	reset(cmd, CMDSIZE);
+	sprintf(cmd, "PASS %s\r\n", pass);
+	ftp_send_cmd(cmd);
+	ftp_recv_response();
 
 	return 0;
 }
 
 int ftp_close() {
-	ftp_send_cmd("QUIT");
+	ftp_send_cmd("QUIT\r\n");
+	ftp_recv_response();
 	close(sockfd);
 }
 
@@ -196,11 +207,8 @@ int ftp_pwd(char *path) {
 	char *b = path;
 	char *s;
 
-	if (!ftp_send_cmd("PWD\r\n"))
-		err_handle(SENDCMD_ERROR);
-
-	if (!ftp_recv_response())
-		err_handle(RECVRESP_ERROR);
+	ftp_send_cmd("PWD\r\n");
+	ftp_recv_response();
 
 	s = strchr(buf, '"');
 	if (s == NULL)
@@ -227,33 +235,15 @@ void getFathDir(char *currDir, char *fathDir) {
 	}
 }
 
-int ftp_cd(char *dest) {
-	reset_cmd();
-	strcpy(cmd, "CWD ");
+int ftp_cd(const char *dir) {
+	reset(cmd, CMDSIZE);
+	sprintf(cmd, "CWD %s\r\n", dir);
+	ftp_send_cmd(cmd);
+	ftp_pwd(cDir);
+}
 
-	char *currDir = new char;
-	char *fathDir = new char;
-
-	//	cout << "before pwd" << endl;
-	ftp_pwd(currDir);
-	if (!strcmp(dest, "..")) {
-		getFathDir(currDir, fathDir);
-		strcat(cmd, fathDir);
-		strcat(cmd, "\r\n");
-		if (!ftp_send_cmd(cmd))
-			err_handle(SENDCMD_ERROR);
-	} else {
-		if (currDir[strlen(currDir) - 1] != '/') {
-			strcat(currDir, "/");
-		}
-		strcat(cmd, currDir);
-		strcat(cmd, dest);
-		strcat(cmd, "\r\n");
-		if (!ftp_send_cmd(cmd))
-			err_handle(SENDCMD_ERROR);
-	}
-
-	reset_buf();
-	if (!ftp_recv_response())
-		err_handle(RECVRESP_ERROR);
+int ftp_cd() {
+	reset(cmd_argu, ARGSIZE);
+	scanf("%s", cmd_argu);
+	ftp_cd(cmd_argu);
 }

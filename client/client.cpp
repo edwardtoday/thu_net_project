@@ -47,19 +47,11 @@ char *addr = DEFAULTHOST;
 char *username = DEFAULTUSER;
 char *password = DEFAULTPASS;
 int port = DEFAULTPORT;
-char *cmd_argu;
+char cmd_argu[ARGSIZE];
 
 void usage(void) {
 	//@TODO complete the usage message
 	cout << "usage message here" << endl;
-}
-int get_cmd_argu(char *cmd_argu) {
-	cin.getline(cmd_argu, CMDSIZE - 6);
-#ifdef DEBUG_OUTPUT
-	cout << DEBUG_MSG_HDR << "command argument is: " << cmd_argu
-			<< DEBUG_MSG_TAIL;
-#endif
-	return (cmd_argu == NULL) ? 1 : 0;
 }
 
 void user_operation() {
@@ -78,13 +70,12 @@ void user_operation() {
 		} else if (s == "put") {
 
 		} else if (s == "pwd") {
-			char* path = new char;
+			char* path = cDir;
 			ftp_pwd(path);
 		} else if (s == "dir" || s == "ls") {
 
 		} else if (s == "cd") {
-			get_cmd_argu(cmd_argu);
-			ftp_cd(cmd_argu);
+			ftp_cd();
 		} else if (s == "quit" || s == "exit") {
 			break;
 		} else {
