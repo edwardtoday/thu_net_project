@@ -34,6 +34,8 @@ char buf[BUFSIZE + 1];
 int sockfd;
 struct sockaddr_in saddr;
 
+//#TODO Unify error output
+
 void mysend()//send buffer
 {
 	buf[sendlen] = 0;
@@ -219,6 +221,7 @@ int main(int argc, char** argv) {
 	while (1) {
 		printf("ftp>");
 		scanf("%s", cmd);
+		//#TODO use usage()
 		if (strcmp(cmd, "?") == 0) {
 			printf("get filename\tget remote file.\n");
 			printf("put filename\tsend file.\n");
@@ -339,6 +342,7 @@ int main(int argc, char** argv) {
 				printf("debug: transfer complete.\n");
 			}
 		} else if (strcmp(cmd, "cd") == 0) {
+			//#TODO add space support
 			char dirname[200];
 			scanf("%s", dirname);
 			sprintf(cmd, "CWD %s\r\n", dirname);

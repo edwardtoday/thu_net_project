@@ -125,7 +125,6 @@ int liststrLen = 0;
 
 char d_buf[DBUFSIZE];
 
-//TODO
 void mycd(char *dirname) {
 	if (strcmp(dirname, ".") == 0) {
 		return;

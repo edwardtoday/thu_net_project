@@ -63,7 +63,7 @@ GLOBALREF int FtpConnect(const char *host, netbuf **nControl);
 GLOBALREF int FtpOptions(int opt, long val, netbuf *nControl);
 GLOBALREF int FtpLogin(const char *user, const char *pass, netbuf *nControl);
 GLOBALREF int FtpAccess(const char *path, int typ, int mode, netbuf *nControl,
-    netbuf **nData);
+		netbuf **nData);
 GLOBALREF int FtpRead(void *buf, int max, netbuf *nData);
 GLOBALREF int FtpWrite(void *buf, int len, netbuf *nData);
 GLOBALREF int FtpClose(netbuf *nData);
@@ -79,15 +79,16 @@ GLOBALREF int FtpDir(const char *output, const char *path, netbuf *nControl);
 GLOBALREF int FtpSize(const char *path, int *size, char mode, netbuf *nControl);
 GLOBALREF int FtpModDate(const char *path, char *dt, int max, netbuf *nControl);
 GLOBALREF int FtpGet(const char *output, const char *path, char mode,
-	netbuf *nControl);
+		netbuf *nControl);
 GLOBALREF int FtpPut(const char *input, const char *path, char mode,
-	netbuf *nControl);
+		netbuf *nControl);
 GLOBALREF int FtpRename(const char *src, const char *dst, netbuf *nControl);
 GLOBALREF int FtpDelete(const char *fnm, netbuf *nControl);
 GLOBALREF void FtpQuit(netbuf *nControl);
 
 #ifdef __cplusplus
-};
+}
+;
 #endif
 
 #endif /* __FTPLIB_H */

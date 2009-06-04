@@ -39,7 +39,6 @@ void debug_output(const string msg) {
 }
 
 void err_handle(const int ERR_NO) {
-	//@TODO Complete the error handler output
 	switch (ERR_NO) {
 	case SOCKET_ERROR:
 		cout << "Socket";
@@ -75,7 +74,7 @@ int ftp_connect(const char *addr, const int addr_type, const int port) {
 
 #ifdef DEBUG_OUTPUT
 	cout << DEBUG_MSG_HDR << "ready to open socket. \t port = " << port
-			<< DEBUG_MSG_TAIL;
+	<< DEBUG_MSG_TAIL;
 #endif
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sockfd == -1)
@@ -84,12 +83,12 @@ int ftp_connect(const char *addr, const int addr_type, const int port) {
 	remote_addr.sin_port = htons(port);
 #ifdef DEBUG_OUTPUT
 	cout << DEBUG_MSG_HDR << "socket open.\t port = "
-			<<ntohs(remote_addr.sin_port) << DEBUG_MSG_TAIL;
+	<<ntohs(remote_addr.sin_port) << DEBUG_MSG_TAIL;
 #endif
 
 #ifdef DEBUG_OUTPUT
 	cout << DEBUG_MSG_HDR << "ready to get addr.\t addr = " << addr
-			<< "\t addr_type = " << addr_type << DEBUG_MSG_TAIL;
+	<< "\t addr_type = " << addr_type << DEBUG_MSG_TAIL;
 #endif
 
 	if (addr_type == IP_ADDR) {
@@ -104,12 +103,12 @@ int ftp_connect(const char *addr, const int addr_type, const int port) {
 
 #ifdef DEBUG_OUTPUT
 	cout << DEBUG_MSG_HDR << "addr got.\t addr = "
-			<< remote_addr.sin_addr.s_addr << DEBUG_MSG_TAIL;
+	<< remote_addr.sin_addr.s_addr << DEBUG_MSG_TAIL;
 #endif
 
 #ifdef DEBUG_OUTPUT
 	cout << DEBUG_MSG_HDR << "ready to connect.\t sockfd = " << sockfd
-			<< "\t addr = " << remote_addr.sin_addr.s_addr << DEBUG_MSG_TAIL;
+	<< "\t addr = " << remote_addr.sin_addr.s_addr << DEBUG_MSG_TAIL;
 #endif
 
 #ifdef DEBUG_OUTPUT
@@ -124,7 +123,7 @@ int ftp_connect(const char *addr, const int addr_type, const int port) {
 #ifdef DEBUG_OUTPUT
 	cout << DEBUG_MSG_HDR << "connection established."
 	//		<<"connect = "<<connect_ret
-			<< DEBUG_MSG_TAIL;
+	<< DEBUG_MSG_TAIL;
 #endif
 
 	return 0;

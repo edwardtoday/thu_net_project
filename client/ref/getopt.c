@@ -6,37 +6,31 @@
 /*
  * get option letter from argument vector
  */
-int
-	opterr = 1,		// should error messages be printed?
-	optind = 1,		// index into parent argv vector
-	optopt;			// character checked for validity
-char
-	*optarg;		// argument associated with option
+int opterr = 1, // should error messages be printed?
+		optind = 1, // index into parent argv vector
+		optopt; // character checked for validity
+char *optarg; // argument associated with option
 
 #define EMSG	""
 
-char *progname;			// may also be defined elsewhere
+char *progname; // may also be defined elsewhere
 
-static void
-error(char *pch)
-{
+static void error(char *pch) {
 	if (!opterr) {
-		return;		// without printing
+		return; // without printing
 	}
-	fprintf(stderr, "%s: %s: %c\n",
-		(NULL != progname) ? progname : "getopt", pch, optopt);
+	fprintf(stderr, "%s: %s: %c\n", (NULL != progname) ? progname : "getopt",
+			pch, optopt);
 }
 
-int
-getopt(int argc, char **argv, char *ostr)
-{
-	static char *place = EMSG;	/* option letter processing */
-	register char *oli;			/* option letter list index */
+int getopt(int argc, char **argv, char *ostr) {
+	static char *place = EMSG; /* option letter processing */
+	register char *oli; /* option letter list index */
 
 	if (!*place) {
 		// update scanning pointer
 		if (optind >= argc || *(place = argv[optind]) != '-' || !*++place) {
-			return EOF; 
+			return EOF;
 		}
 		if (*place == '-') {
 			// found "--"
@@ -46,15 +40,14 @@ getopt(int argc, char **argv, char *ostr)
 	}
 
 	/* option letter okay? */
-	if ((optopt = (int)*place++) == (int)':'
-		|| !(oli = strchr(ostr, optopt))) {
+	if ((optopt = (int) *place++) == (int) ':' || !(oli = strchr(ostr, optopt))) {
 		if (!*place) {
 			++optind;
 		}
 		error("illegal option");
 		return BADCH;
 	}
-	if (*++oli != ':') {	
+	if (*++oli != ':') {
 		/* don't need argument */
 		optarg = NULL;
 		if (!*place)
@@ -62,17 +55,17 @@ getopt(int argc, char **argv, char *ostr)
 	} else {
 		/* need an argument */
 		if (*place) {
-			optarg = place;		/* no white space */
-		} else  if (argc <= ++optind) {
+			optarg = place; /* no white space */
+		} else if (argc <= ++optind) {
 			/* no arg */
 			place = EMSG;
 			error("option requires an argument");
 			return BADCH;
 		} else {
-			optarg = argv[optind];		/* white space */
+			optarg = argv[optind]; /* white space */
 		}
 		place = EMSG;
 		++optind;
 	}
-	return optopt;			// return option letter
+	return optopt; // return option letter
 }

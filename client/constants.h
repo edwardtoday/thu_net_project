@@ -28,6 +28,8 @@
 #define DEFAULTPASS				"NewTerm"
 #define DEFAULTPORT				21
 
+//#TODO define ftp response num, don't forget the server side
+
 #define SOCKET_ERROR 			-101
 #define GETHOSTBYNAME_ERROR 	-102
 #define ADDRTYPE_ERROR			-103

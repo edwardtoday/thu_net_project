@@ -2,7 +2,8 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <string.h>
-#include <WinSock.h>
+#include <sys/socket.h>
+//#include <WinSock.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <direct.h>
