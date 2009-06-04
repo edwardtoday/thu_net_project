@@ -9,21 +9,23 @@
 #define CONSTANTS_H_
 
 #define DEBUG_OUTPUT
-#define DEBUG_MSG_HDR			" Debug output message \n"
-#define DEBUG_MSG_TAIL			"\n End of debug output message \n"
+#define DEBUG_HDR			" Debug output message \n"
+#define DEBUG_TAIL			"\n End of debug output message \n"
 
-#define BUFSIZE					1024
-#define DIRSIZE					256
+#define BUFSIZE					8192
+#define DBUFSIZE				8192
+#define DIRSIZE					512
 #define LOGINBUFSIZE			64
-#define CMDSIZE					256
-#define ARGSIZE					250
+#define CMDSIZE					512
+#define ARGSIZE					512
+#define RESPSIZE				32767
 
 #define IP_ADDR					1
 #define HOSTNAME_ADDR			2
 
-#define DEFAULTHOST				"localhost"
-#define DEFAULTUSER				"418"
-#define DEFAULTPASS				"418A"
+#define DEFAULTHOST				"59.66.131.167"
+#define DEFAULTUSER				"user9"
+#define DEFAULTPASS				"NewTerm"
 #define DEFAULTPORT				21
 
 #define SOCKET_ERROR 			-101

@@ -44,7 +44,7 @@
 </toolChain>
 </folderInfo>
 <sourceEntries>
-<entry excluding="ref|getopt.h|getopt.c|ftplib.h|ftplib.c|qftp.c|client2.cpp|client1.cpp" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+<entry excluding="ftp_method.h|ftp_method.cpp|ref|getopt.h|getopt.c|ftplib.h|ftplib.c|qftp.c|client2.cpp|client1.cpp" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 </sourceEntries>
 </configuration>
 </storageModule>
@@ -509,7 +509,7 @@
 </toolChain>
 </folderInfo>
 <sourceEntries>
-<entry excluding="ref|getopt.h|getopt.c|ftplib.h|ftplib.c|qftp.c|client2.cpp|client1.cpp" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+<entry excluding="ftp_method.h|ftp_method.cpp|ref|getopt.h|getopt.c|ftplib.h|ftplib.c|qftp.c|client2.cpp|client1.cpp" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 </sourceEntries>
 </configuration>
 </storageModule>
