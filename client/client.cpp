@@ -62,31 +62,28 @@ void user_operation(){
 
 	//@TODO 改成switch case
 	do{
-		cout << ">>";
+		cout << "ftp>";
 		cin >> s;
-		if (s == "get") {
-			char sGet[CMDSIZE] = { 0 };
-			cin >> sGet;
-			ftp_get(sGet);
-		} else if (s == "put") {
-			char sPut[CMDSIZE] = { 0 };
-			cin >> sPut;
-			ftp_put(sPut);
-		} else if (s == "pwd") {
-			char* currDir = new char;
-			ftp_pwd(currDir);
-			if (currDir != NULL)
-				cout << currDir << endl;
-		} else if (s == "dir" || s == "ls") {
-			ftp_dir();
-		} else if (s == "cd") {
-			char sCd[CMDSIZE];
-			cin >> sCd;
-			ftp_cd(sCd);
-		} else {
+		switch(s){
+		case "get":
+			break;
+		case "put":
+			break;
+		case "pwd":
+			break;
+		case "dir":
+		case "ls":
+			break;
+		case "cd":
+			break;
+		case "quit":
+		case "exit":
+//			will call ftp_close() in main function
+			break;
+		default:
 			usage();
 		}
-	}while (s != "quit" && s != "exit");
+	}while (true);
 }
 
 int main(int argc, char * argv[]){
