@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include "ftp_method.h"
 #include "constants.h"
+#include <bits/stringfwd.h>
 
 using namespace std;
 
@@ -38,55 +39,61 @@ using namespace std;
 //extern int port;
 
 int sockfd = -1, numbytes = -1;
-char buf[BUFSIZE] = {};
-char cDir[DIRSIZE] = {};
+char buf[BUFSIZE] = { };
+char cDir[DIRSIZE] = { };
+char cmd[CMDSIZE] = { };
 int addr_type = HOSTNAME_ADDR;
-char* addr = DEFAULTHOST;
-char* username = DEFAULTUSER;
-char* password = DEFAULTPASS;
+char *addr = DEFAULTHOST;
+char *username = DEFAULTUSER;
+char *password = DEFAULTPASS;
 int port = DEFAULTPORT;
+char *cmd_argu;
 
-
-void usage(void){
+void usage(void) {
 	//@TODO complete the usage message
-	cout<<"usage message here"<<endl;
+	cout << "usage message here" << endl;
+}
+int get_cmd_argu(char *cmd_argu) {
+	cin.getline(cmd_argu, CMDSIZE - 6);
+#ifdef DEBUG_OUTPUT
+	cout << DEBUG_MSG_HDR << "command argument is: " << cmd_argu
+			<< DEBUG_MSG_TAIL;
+#endif
+	return (cmd_argu == NULL) ? 1 : 0;
 }
 
-void user_operation(){
+void user_operation() {
 	memset(cDir, 0, DIRSIZE);
 	char rootDir[2] = "/";
 	strcat(cDir, rootDir);
 
 	string s;
 
-
 	//@TODO 改成switch case
-	do{
+	do {
 		cout << "ftp>";
 		cin >> s;
-		switch(s){
-		case "get":
+		if (s == "get") {
+
+		} else if (s == "put") {
+
+		} else if (s == "pwd") {
+			char* path = new char;
+			ftp_pwd(path);
+		} else if (s == "dir" || s == "ls") {
+
+		} else if (s == "cd") {
+			get_cmd_argu(cmd_argu);
+			ftp_cd(cmd_argu);
+		} else if (s == "quit" || s == "exit") {
 			break;
-		case "put":
-			break;
-		case "pwd":
-			break;
-		case "dir":
-		case "ls":
-			break;
-		case "cd":
-			break;
-		case "quit":
-		case "exit":
-//			will call ftp_close() in main function
-			break;
-		default:
+		} else {
 			usage();
 		}
-	}while (true);
+	} while (true);
 }
 
-int main(int argc, char * argv[]){
+int main(int argc, char * argv[]) {
 
 	//get_login_info();
 	ftp_connect(addr, addr_type, port);

@@ -30,6 +30,7 @@
 #define ADDRTYPE_ERROR			-103
 #define CONNECT_ERROR			-104
 #define RECV_ERROR				-105
-
+#define SENDCMD_ERROR			-106
+#define RECVRESP_ERROR			-107
 
 #endif /* CONSTANTS_H_ */
