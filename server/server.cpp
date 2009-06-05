@@ -217,8 +217,11 @@ int start_server() {
 	myaddr.sin_addr.s_addr = htonl(INADDR_ANY);
 	myaddr.sin_port = htons(LISTEN_PORT);
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
-	if (bind(sockfd, (struct sockaddr*) &myaddr, sizeof(struct sockaddr_in))
+	while (bind(sockfd, (struct sockaddr*) &myaddr, sizeof(struct sockaddr_in))
 			< 0) {
+		//		printf("Bind error.\n");
+		//		wait(5);
+		//		return -1;
 		//		cout << "Bind error.\n";
 		wait(5);
 		return -1;
@@ -358,10 +361,10 @@ int reset() {
 }
 
 int main() {
-	while (true) {
-		reset();
-		wait(20);
-		start_server();
-	}
+	//	while (true) {
+	//		reset();
+	//		wait(20);
+	start_server();
+	//	}
 	return 0;
 }
