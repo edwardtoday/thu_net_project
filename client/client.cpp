@@ -24,8 +24,6 @@
 #include <assert.h>
 #include <pthread.h>
 
-#define DEBUG_MSG
-
 using namespace std;
 
 static char server_ip[20];
@@ -47,75 +45,75 @@ void debug_msg(const int MSGNO, const int msg = 0) {
 	cout << DEBUG_HDR;
 
 	switch (MSGNO) {
-	case SENDCMD_ERROR:
+		case SENDCMD_ERROR:
 		cout << "Error send command.";
 		break;
-	case INITDATACON:
+		case INITDATACON:
 		cout << "Initializing data connection.";
 		break;
-	case _ERROPENDATACON:
+		case _ERROPENDATACON:
 		cout << "Error open data connection.";
 		break;
-	case _DATACONOPEN:
+		case _DATACONOPEN:
 		cout << "Data connection open.";
 		break;
-	case _DATACONCLOSE:
+		case _DATACONCLOSE:
 		cout << "Data connection closed.";
 		break;
-	case _TRANSABORTED:
+		case _TRANSABORTED:
 		cout << "Error transfer data. Transfer aborted.";
 		break;
-	case PASV_ERROR:
+		case PASV_ERROR:
 		cout << "Error entering PASV mode.";
 		break;
-	case SHOW_DATA_PORT:
+		case SHOW_DATA_PORT:
 		cout << "Data port is\t" << msg;
 		break;
-	case SHOW_PORT:
+		case SHOW_PORT:
 		cout << "Port is\t" << msg;
 		break;
-	case RECEIVING:
+		case RECEIVING:
 		cout << "Receiving.";
 		break;
-	case RECV_LEN:
+		case RECV_LEN:
 		cout << "Receiving " << msg << " bytes.";
 		break;
-	case USERNAME_ERROR:
+		case USERNAME_ERROR:
 		cout << "User does not exist or not authorized to login.";
 		break;
-	case _USERNAMEOK:
+		case _USERNAMEOK:
 		cout << "User is accepted.";
 		break;
-	case _NOTLOGGEDIN:
+		case _NOTLOGGEDIN:
 		cout << "Error login.";
 		break;
-	case _LOGGEDIN:
+		case _LOGGEDIN:
 		cout << "User login successful.";
 		break;
-	case ANONYM_ERROR:
+		case ANONYM_ERROR:
 		cout << "Error login as anonymous user.";
 		break;
-	case SOCKET_ERROR:
+		case SOCKET_ERROR:
 		cout << "Error open socket.";
 		break;
-	case _SVCREADYFORNEWU:
+		case _SVCREADYFORNEWU:
 		cout << "Service not ready for new user.";
 		break;
-	case _CLOSECTRLCON:
+		case _CLOSECTRLCON:
 		cout << "Control connection close. Quit now.";
 		break;
-	case _CMDERROR:
+		case _CMDERROR:
 		cout << "Error run command.";
 		break;
-	case _FILEUNAVAIL:
+		case _FILEUNAVAIL:
 		cout << "File unavailable.";
 		break;
-	case SHOW_CMD:
+		case SHOW_CMD:
 		cout << "Sending command:\n\t\t" << ctrl_buffer;
 		break;
-	case SHOW_DBUF:
+		case SHOW_DBUF:
 		cout << "Data received is\n\t\t" << data_buf;
-	default:
+		default:
 		cout << "Error unknown.";
 	}
 	cout << DEBUG_TAIL;

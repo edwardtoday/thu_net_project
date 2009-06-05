@@ -8,14 +8,14 @@
 #ifndef CONSTANTS_H_
 #define CONSTANTS_H_
 
-#define DEBUG_OUTPUT
-#define DEBUG_HDR			"\t Debug output message \n\t"
-#define DEBUG_TAIL			"\n\t End of debug output message \n"
+#define DEBUG_MSG
+#define DEBUG_HDR			"\t Debug output message \n\t"
+#define DEBUG_TAIL			"\n\t End of debug output message \n"
 
-#define USAGE_HDR			"\t Usage information \n"
-#define USAGE_TAIL			"\n\t End of usage information \n"
+#define USAGE_HDR			"\t Usage information \n"
+#define USAGE_TAIL			"\n\t End of usage information \n"
 
-#define BUFSIZE					4096
+#define BUFSIZE					8192
 #define DBUFSIZE				8192
 #define DIRSIZE					512
 #define LOGINBUFSIZE			64

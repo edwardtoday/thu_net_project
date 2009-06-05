@@ -32,7 +32,7 @@
 using namespace std;
 
 #define LISTEN_PORT 1988
-int local_ip[4] = { 58, 66, 138, 127 };
+int local_ip[4] = { 127, 0, 0, 1 };
 
 static int sockfd;
 static int clientsock;
@@ -88,7 +88,7 @@ int PASV() {
 	int d_sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	while (bind(d_sockfd, (struct sockaddr*) &d_myaddr,
 			sizeof(struct sockaddr_in)) < 0) {
-		cout << "Bind data port error.\n";
+		//		cout << "Bind data port error.\n";
 		d_myaddr.sin_port = htons(ntohs(d_myaddr.sin_port) + 1);
 	}
 	if (listen(d_sockfd, 1) < 0) {
@@ -361,10 +361,10 @@ int reset() {
 }
 
 int main() {
-	//	while (true) {
-	//		reset();
-	//		wait(20);
-	start_server();
-	//	}
+	while (true) {
+		//		reset();
+		wait(20);
+		start_server();
+	}
 	return 0;
 }
