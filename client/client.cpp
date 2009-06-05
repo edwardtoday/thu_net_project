@@ -24,340 +24,431 @@
 #include <assert.h>
 #include <pthread.h>
 
+#define DEBUG_MSG
+
 using namespace std;
 
-char SERVER_IP[20];
+static char server_ip[20];
 
-int recvlen = 0;
-int sendlen = 0;
-char buf[BUFSIZE + 1];
-int sockfd;
-struct sockaddr_in saddr;
+static int recv_bytes = 0;
+static int send_bytes = 0;
+static char ctrl_buffer[BUFSIZE + 1];
+static char data_buf[DBUFSIZE + 1];
 
-//#TODO Unify error output
+static int sockfd;
+static struct sockaddr_in saddr;
 
-void mysend()//send buffer
-{
-	buf[sendlen] = 0;
-	printf(buf);
-	int len = write(sockfd, buf, sendlen);
-	if (sendlen != len) {
-		printf("send command error!\n");
+static int d_sockfd;
+static struct sockaddr_in d_saddr;
+static char cmd[200];
+
+void debug_msg(const int MSGNO, const int msg = 0) {
+#ifdef DEBUG_MSG
+	cout << DEBUG_HDR;
+
+	switch (MSGNO) {
+	case SENDCMD_ERROR:
+		cout << "Error send command.";
+		break;
+	case INITDATACON:
+		cout << "Initializing data connection.";
+		break;
+	case _ERROPENDATACON:
+		cout << "Error open data connection.";
+		break;
+	case _DATACONOPEN:
+		cout << "Data connection open.";
+		break;
+	case _DATACONCLOSE:
+		cout << "Data connection closed.";
+		break;
+	case _TRANSABORTED:
+		cout << "Error transfer data. Transfer aborted.";
+		break;
+	case PASV_ERROR:
+		cout << "Error entering PASV mode.";
+		break;
+	case SHOW_DATA_PORT:
+		cout << "Data port is\t" << msg;
+		break;
+	case SHOW_PORT:
+		cout << "Port is\t" << msg;
+		break;
+	case RECEIVING:
+		cout << "Receiving.";
+		break;
+	case RECV_LEN:
+		cout << "Receiving " << msg << " bytes.";
+		break;
+	case USERNAME_ERROR:
+		cout << "User does not exist or not authorized to login.";
+		break;
+	case _USERNAMEOK:
+		cout << "User is accepted.";
+		break;
+	case _NOTLOGGEDIN:
+		cout << "Error login.";
+		break;
+	case _LOGGEDIN:
+		cout << "User login successful.";
+		break;
+	case ANONYM_ERROR:
+		cout << "Error login as anonymous user.";
+		break;
+	case SOCKET_ERROR:
+		cout << "Error open socket.";
+		break;
+	case _SVCREADYFORNEWU:
+		cout << "Service not ready for new user.";
+		break;
+	case _CLOSECTRLCON:
+		cout << "Control connection close. Quit now.";
+		break;
+	case _CMDERROR:
+		cout << "Error run command.";
+		break;
+	case _FILEUNAVAIL:
+		cout << "File unavailable.";
+		break;
+	case SHOW_CMD:
+		cout << "Sending command:\n\t\t" << ctrl_buffer;
+		break;
+	case SHOW_DBUF:
+		cout << "Data received is\n\t\t" << data_buf;
+	default:
+		cout << "Error unknown.";
 	}
-	assert(sendlen == len);
+	cout << DEBUG_TAIL;
+#endif
 }
 
-void myrecv() {
+int usage(const int type = 1) {
+	cout << USAGE_HDR;
+	switch (type) {
+	case 0:
+		cout << "\tTo connect a ftp server, please type the cammand:\n";
+		cout << "\t\t./client <server_ip> [server_port] [username password]";
+		break;
+	case 2:
+		cout << "Command not implemented.";
+		break;
+	default:
+		cout << "get <filename>\t:\tdownload file:<filename> from server.\n";
+		cout << "put <filename>\t:\tupload file:<filename> to server.\n";
+		cout << "pwd\t\t:\tshow current directory at server.\n";
+		cout << "dir\t\t:\tlist files in the current directory.\n";
+		cout << "cd <dirname>\t:\tchange current directory to ./<dirname>.\n";
+		cout << "quit\t\t:\tquit client.\n";
+		cout << "?\t\t\t:\tshow this help.";
+		break;
+	}
+	cout << USAGE_TAIL;
+	return 0;
+}
+void send_ctrl_buffer()//send buffer
+{
+	ctrl_buffer[send_bytes] = 0;
+	debug_msg(SHOW_CMD);
+	int len = write(sockfd, ctrl_buffer, send_bytes);
+	if (send_bytes != len)
+		debug_msg(SENDCMD_ERROR);
+	assert(send_bytes == len);
+}
+
+void recv_ctrl_buffer() {
 	do {
-		printf("debug: receiving...\n");
-		recvlen = read(sockfd, buf, BUFSIZE);
-	} while (recvlen == 0);
-	buf[recvlen] = 0;
-	printf(buf);
+		debug_msg(RECEIVING);
+		recv_bytes = read(sockfd, ctrl_buffer, BUFSIZE);
+	} while (recv_bytes == 0);
+	ctrl_buffer[recv_bytes] = 0;
+	debug_msg(SHOW_CMD);
 }
 
-void sendCmd(char *s) {
-	strcpy(buf, s);
-	sendlen = strlen(s);
-	mysend();
+void send_cmd(char *s) {
+	strcpy(ctrl_buffer, s);
+	send_bytes = strlen(s);
+	send_ctrl_buffer();
 }
 
-int getCmdNum() {
+int ftp_code() {
 	int ret = 0;
-	assert(sscanf(buf, "%d", &ret) == 1);
+	assert(sscanf(ctrl_buffer, "%d", &ret) == 1);
 	return ret;
 }
 
-int d_sockfd;
-struct sockaddr_in d_saddr;
+int pasv() {
+	debug_msg(INITDATACON);
 
-int d_init() {
-	printf("debug: begin d_init in client.\n");
-
-	sendCmd("PASV\r\n");
-	myrecv();
+	send_cmd("PASV\r\n");
+	recv_ctrl_buffer();
 	int portH, portL;
 	int IP[4];
-	if (sscanf(buf, "227 Entering Passive Mode (%d,%d,%d,%d,%d,%d)", &IP[3],
-			&IP[2], &IP[1], &IP[0], &portH, &portL) != 6) {
-		printf("PASV Error\n");
+	if (sscanf(ctrl_buffer, "227 Entering Passive Mode (%d,%d,%d,%d,%d,%d)",
+			&IP[3], &IP[2], &IP[1], &IP[0], &portH, &portL) != 6) {
+		debug_msg(PASV_ERROR);
 		return -1;
 	} else {
 		int dataPort = (portH << 8) | portL;
-		printf("//Server data port: %d\n", dataPort);
+		//		printf("//Server data port: %d\n", dataPort);
+		debug_msg(SHOW_DATA_PORT, dataPort);
 		bzero(&saddr, sizeof(struct sockaddr_in));
 		d_saddr.sin_family = AF_INET;
-		d_saddr.sin_addr.s_addr = inet_addr(SERVER_IP);
+		d_saddr.sin_addr.s_addr = inet_addr(server_ip);
 		d_saddr.sin_port = htons(dataPort);
 		d_sockfd = socket(AF_INET, SOCK_STREAM, 0);
 		if (connect(d_sockfd, (struct sockaddr*) &d_saddr,
 				sizeof(struct sockaddr_in)) < 0) {
-			printf("Data connect error.\n");
+			debug_msg(_ERROPENDATACON);
 			close(d_sockfd);
 			return -1;
-		} else {
-			printf("Dataport connected.\n");
-		}
+		} else
+			debug_msg(_DATACONOPEN);
 	}
 
 	return 0;
 }
 
-char d_buf[DBUFSIZE + 1];
-
-void d_mysend(FILE* d_f) {
+void send_file(FILE* d_f) {
 	while (1) {
-		int readlen = fread(d_buf, 1, DBUFSIZE, d_f);
+		int readlen = fread(data_buf, 1, DBUFSIZE, d_f);
 		if (readlen == 0)
 			break;
-		int sendlen = write(d_sockfd, d_buf, readlen);
+		int sendlen = write(d_sockfd, data_buf, readlen);
 		if (sendlen != readlen) {
-			printf("send data error!\n");
+			debug_msg(_TRANSABORTED);
 		}
 		assert(sendlen == readlen);
 	}
-	printf("debug: d_sockfd %d\n", d_sockfd);
-	printf("debug: sockfd %d\n", sockfd);
+
+	debug_msg(SHOW_DATA_PORT, d_sockfd);
+	debug_msg(SHOW_PORT, sockfd);
 	close(d_sockfd);
 }
 
-void d_myrecv(FILE *d_f) {
+void recv_file(FILE *d_f) {
 	while (1) {
-		recvlen = read(d_sockfd, d_buf, DBUFSIZE);
+		recv_bytes = read(d_sockfd, data_buf, DBUFSIZE);
 
 		if (d_f)
-			printf("debug: recv %d bytes\n", recvlen);
+			debug_msg(RECV_LEN, recv_bytes);
 
-		if (recvlen == 0)
+		if (recv_bytes == 0)
 			break;
 
-		d_buf[recvlen] = 0;
+		data_buf[recv_bytes] = 0;
 		if (d_f) {
-			fwrite(d_buf, 1, recvlen, d_f);
+			fwrite(data_buf, 1, recv_bytes, d_f);
 		} else
-			printf(d_buf);
+			debug_msg(SHOW_DBUF);
 	}
 	close(d_sockfd);
 }
 
-int log_in_user_pass(char* user, char* pass) {
+int login(char* user, char* pass) {
 	char cmd[100];
 	sprintf(cmd, "USER %s\r\n", user);
-	sendCmd(cmd);
-	myrecv();
-	if (getCmdNum() != _USERNAMEOK) {
-		printf("user is not allowed, quit.\n");
+	send_cmd(cmd);
+	recv_ctrl_buffer();
+	if (ftp_code() != _USERNAMEOK) {
+		debug_msg(USERNAME_ERROR);
 		close(sockfd);
 		return -1;
-	} else {
-		printf("User OK\n");
-	}
+	} else
+		debug_msg(_USERNAMEOK);
 
 	sprintf(cmd, "PASS %s\r\n", pass);
-	sendCmd(cmd);
-	myrecv();
-	if (getCmdNum() != _LOGGEDIN) {
-		printf("Wrong password, quit.\n");
+	send_cmd(cmd);
+	recv_ctrl_buffer();
+	if (ftp_code() != _LOGGEDIN) {
+		debug_msg(_NOTLOGGEDIN);
 		close(sockfd);
 		return -1;
-	} else {
-		printf("Password OK\n");
+	} else
+		debug_msg(_LOGGEDIN);
+
+	return 0;
+}
+
+int login_anonymous() {
+	send_cmd("USER anonymous\r\n");
+	recv_ctrl_buffer();
+	if (ftp_code() != _LOGGEDIN) {
+		debug_msg(ANONYM_ERROR);
+		close(sockfd);
+		return -1;
 	}
 	return 0;
 }
 
-int log_in_anonymous() {
-	sendCmd("USER anonymous\r\n");
-	myrecv();
-	if (getCmdNum() != _LOGGEDIN) {
-		printf("Anonymous user is not allowed, quit.\n");
-		close(sockfd);
-		return -1;
-	}
-	return 0;
+int ftp_quit() {
+	send_cmd("QUIT\r\n");
+	recv_ctrl_buffer();
+	if (ftp_code() != _CLOSECTRLCON)
+		debug_msg(_CLOSECTRLCON);
+	close(sockfd);
+	exit(0);
 }
 
+int ftp_get() {
+	char filename[200];
+	scanf("%s", filename);
+	//			scanf("%255[^\n]", filename);
+	send_cmd("TYPE I\r\n");
+	recv_ctrl_buffer();
+	if (ftp_code() != _CMDOK)
+		debug_msg(_CMDERROR);
+
+	/*
+	 sprintf(cmd, "SIZE %s\r\n", filename);
+	 send_cmd(cmd);
+	 recv_ctrl_buffer();
+	 if(ftp_code() != _FILESTAT)
+	 {
+	 printf("get response error.\n");
+	 }*/
+
+	pasv();
+
+	sprintf(cmd, "RETR %s\r\n", filename);
+	send_cmd(cmd);
+	recv_ctrl_buffer();
+	if (ftp_code() != _FILESTATUSOK)
+		debug_msg(_FILEUNAVAIL);
+
+	FILE *f = fopen(filename, "wb");
+	recv_file(f);
+
+	recv_ctrl_buffer();
+	if (ftp_code() != _DATACONCLOSE)
+		debug_msg(_TRANSABORTED);
+
+	fclose(f);
+	return 0;
+}
+int ftp_cd() {
+	char dirname[DIRSIZE];
+	scanf("%255[^\n]", dirname);
+	sprintf(cmd, "CWD %s\r\n", dirname + 1);
+	send_cmd(cmd);
+	recv_ctrl_buffer();
+	if (ftp_code() != _FILEACTOK)
+		debug_msg(ftp_code());
+	return 0;
+}
+int ftp_dir() {
+	send_cmd("TYPE A\r\n");
+	recv_ctrl_buffer();
+	if (ftp_code() != _CMDOK)
+		debug_msg(_CMDERROR);
+
+	pasv();
+	debug_msg(_DATACONOPEN);
+
+	send_cmd("LIST\r\n");
+	recv_ctrl_buffer();
+	if (ftp_code() != _FILESTATUSOK)
+		debug_msg(_FILEUNAVAIL);
+
+	recv_file(0);
+
+	recv_ctrl_buffer();
+	if (ftp_code() != _DATACONCLOSE)
+		debug_msg(_TRANSABORTED);
+	else
+		debug_msg(_DATACONCLOSE);
+	return 0;
+}
+int ftp_pwd() {
+	send_cmd("PWD\r\n");
+	recv_ctrl_buffer();
+	if (ftp_code() != _PATHNAMECREATED)
+		debug_msg(_CMDERROR);
+	return 0;
+}
+int ftp_put() {
+	char filename[200];
+	scanf("%s", filename);
+	//			scanf("%255[^\n]", filename);
+
+	send_cmd("TYPE I\r\n");
+	recv_ctrl_buffer();
+	if (ftp_code() != _CMDOK)
+		debug_msg(_CMDERROR);
+
+	pasv();
+
+	sprintf(cmd, "STOR %s\r\n", filename);
+	send_cmd(cmd);
+	recv_ctrl_buffer();
+
+	if (ftp_code() != _FILESTATUSOK)
+		debug_msg(_FILEUNAVAIL);
+
+	FILE *f = fopen(filename, "rb");
+	send_file(f);
+
+	recv_ctrl_buffer();
+	if (ftp_code() != _DATACONCLOSE)
+		debug_msg(_TRANSABORTED);
+
+	fclose(f);
+	return 0;
+}
 int main(int argc, char** argv) {
 	if (argc != 1 && argc != 3 && argc != 5) {
-		printf("./client [IP port [user pass]]\n");
+		usage(0);
 	}
 	int port;
-	if (argc == 1) {
-		strcpy(SERVER_IP, "127.0.0.1");
-		port = 2437;
-	} else {
-		strcpy(SERVER_IP, argv[1]);
-		assert(sscanf(argv[2], "%d", &port) == 1);
-	}
+	strcpy(server_ip, argv[1]);
+	assert(sscanf(argv[2], "%d", &port) == 1);
 
 	bzero(&saddr, sizeof(struct sockaddr_in));
 	saddr.sin_family = AF_INET;
-	saddr.sin_addr.s_addr = inet_addr(SERVER_IP);
+	saddr.sin_addr.s_addr = inet_addr(server_ip);
 	saddr.sin_port = htons(port);
 
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (connect(sockfd, (struct sockaddr*) &saddr, sizeof(struct sockaddr_in))
 			< 0) {
-		printf("Connect error.\n");
+		debug_msg(SOCKET_ERROR);
 		close(sockfd);
 		return -1;
 	}
-	myrecv();
-	if (getCmdNum() != _SVCREADYFORNEWU) {
-		printf("Not success, quit.\n");
+	recv_ctrl_buffer();
+	if (ftp_code() != _SVCREADYFORNEWU) {
+		debug_msg(_SVCREADYFORNEWU);
 		close(sockfd);
 		return -1;
 	}
 
 	if (argc == 5) {
-		if (log_in_user_pass(argv[3], argv[4]) < 0)
+		if (login(argv[3], argv[4]) < 0)
 			return -1;
 	} else {
-		if (log_in_anonymous() < 0)
+		if (login_anonymous() < 0)
 			return -1;
 	}
 
-	char cmd[200];
 	while (1) {
 		printf("ftp>");
 		scanf("%s", cmd);
-		//#TODO use usage()
 		if (strcmp(cmd, "?") == 0) {
-			printf("get filename\tget remote file.\n");
-			printf("put filename\tsend file.\n");
-			printf("pwd\t\tshow remote current directory.\n");
-			printf("dir\t\tshow remote files in current directory.\n");
-			printf("cd dirname\tchange remote directory.\n");
-			printf("quit\t\tquit ftp.\n");
-			printf("?\t\tshow this help.\n");
+			usage();
 		} else if (strcmp(cmd, "quit") == 0) {
-			sendCmd("QUIT\r\n");
-			myrecv();
-			if (getCmdNum() != _CLOSECTRLCON) {
-				printf("Goodbye response error.\n");
-			}
-			break;
+			ftp_quit();
 		} else if (strcmp(cmd, "get") == 0) {
-			char filename[200];
-			scanf("%s", filename);
-			//			scanf("%255[^\n]", filename);
-			printf("debug: filename %s\n", filename);
-
-			sendCmd("TYPE I\r\n");
-			myrecv();
-			if (getCmdNum() != _CMDOK) {
-				printf("get error.\n");
-			}
-
-			/*
-			 sprintf(cmd, "SIZE %s\r\n", filename);
-			 sendCmd(cmd);
-			 myrecv();
-			 if(getCmdNum() != _FILESTAT)
-			 {
-			 printf("get response error.\n");
-			 }*/
-
-			d_init();
-
-			sprintf(cmd, "RETR %s\r\n", filename);
-			sendCmd(cmd);
-			myrecv();
-			if (getCmdNum() != _FILESTATUSOK) {
-				printf("get response error.\n");
-			}
-
-			FILE *f = fopen(filename, "wb");
-			d_myrecv(f);
-
-			myrecv();
-			if (getCmdNum() != _DATACONCLOSE) {
-				printf("get response error.\n");
-			}
-
-			fclose(f);
-
+			ftp_get();
 		} else if (strcmp(cmd, "put") == 0) {
-			char filename[200];
-			scanf("%s", filename);
-			//			scanf("%255[^\n]", filename);
-			printf("debug: filename %s\n", filename);
-
-			sendCmd("TYPE I\r\n");
-			myrecv();
-			if (getCmdNum() != _CMDOK) {
-				printf("get error.\n");
-			}
-
-			d_init();
-
-			sprintf(cmd, "STOR %s\r\n", filename);
-			sendCmd(cmd);
-			myrecv();
-
-			if (getCmdNum() != _FILESTATUSOK) {
-				printf("get response error.\n");
-			}
-
-			FILE *f = fopen(filename, "rb");
-			d_mysend(f);
-
-			printf("debug: send done.\n");
-
-			myrecv();
-			if (getCmdNum() != _DATACONCLOSE) {
-				printf("get response error.\n");
-			}
-
-			fclose(f);
+			ftp_put();
 		} else if (strcmp(cmd, "pwd") == 0) {
-			sendCmd("PWD\r\n");
-			myrecv();
-			if (getCmdNum() != _PATHNAMECREATED) {
-				printf("PWD response error.\n");
-			}
+			ftp_pwd();
 		} else if (strcmp(cmd, "dir") == 0) {
-			sendCmd("TYPE A\r\n");
-			myrecv();
-			if (getCmdNum() != _CMDOK) {
-				printf("dir error.\n");
-			}
-
-			d_init();
-
-			printf("debug: before send LIST\n");
-
-			sendCmd("LIST\r\n");
-			myrecv();
-			if (getCmdNum() != _FILESTATUSOK) {
-				printf("dir error.\n");
-			}
-
-			d_myrecv(0);
-
-			myrecv();
-			if (getCmdNum() != _DATACONCLOSE) {
-				printf("dir error.\n");
-			}
-
-			else {
-				printf("debug: transfer complete.\n");
-			}
+			ftp_dir();
 		} else if (strcmp(cmd, "cd") == 0) {
-			//#TODO add space support
-			char dirname[DIRSIZE];
-			//			scanf("%s", dirname);
-			scanf("%255[^\n]", dirname);
-			sprintf(cmd, "CWD %s\r\n", dirname + 1);
-			sendCmd(cmd);
-			myrecv();
-			if (getCmdNum() != _FILEACTOK) {
-				printf("CWD response error.\n");
-			}
-		} else {
-			printf("Invalid command.\n");
-		}
+			ftp_cd();
+		} else
+			usage(2);
 	}
-	close(sockfd);
+
 	return 0;
 }

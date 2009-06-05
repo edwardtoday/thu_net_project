@@ -31,101 +31,98 @@
 
 using namespace std;
 
-#define SERVER_PORT 1988
-int IP[4] = { 58, 66, 138, 127 };
+#define LISTEN_PORT 1988
+int local_ip[4] = { 58, 66, 138, 127 };
 
-char buf[BUFSIZE + 1];
-int req_len = 0;
+static int sockfd;
+static int clientsock;
+static int clientsock_orig;
+static int data_clientsock;
 
-int sockfd;
-int clientSock;
-
-int backup;
-
-char work_dir[DIRSIZE] = ".";
+static char ctrl_buffer[BUFSIZE + 1];
+static int recv_bytes = 0;
+static char list_buf[DBUFSIZE];
+static int list_buf_size = 0;
+static char data_buf[DBUFSIZE];
+static char work_dir[DIRSIZE] = ".";
 
 void wait(const int time = 1) {
-	int intval = 5000000* time ;
+	int intval = WAIT_TIME * time;
 	while (intval--)
 		;
 }
-void sendResponseAll(char* Res) {
+void FTP_SEND_RESP(char* Res) {
 	wait();
-	write(clientSock, Res, strlen(Res));
-	printf("Response: %s", Res);
+	write(clientsock, Res, strlen(Res));
+#ifdef DEBUG_OUTPUT
+	cout << "Response: " << Res;
+#endif
 }
 
-void sendResponse(int Num) {
+void SEND_RESP(int Num) {
 	char Res[RESPSIZE];
 	memset(Res, 0, RESPSIZE);
 	sprintf(Res, "%d\r\n", Num);
-	sendResponseAll(Res);
+	FTP_SEND_RESP(Res);
 }
 
-void getRequest() {
+void GET_RQST() {
 	wait();
-	req_len = read(clientSock, buf, BUFSIZE);
-	buf[req_len] = 0;
-	printf(buf);
+	recv_bytes = read(clientsock, ctrl_buffer, BUFSIZE);
+	ctrl_buffer[recv_bytes] = 0;
+#ifdef DEBUG_OUTPUT
+	cout << ctrl_buffer;
+#endif
 }
 
-int strbegins(const char* strShort, const char* strLong) {
+int begin_with(const char* strShort, const char* strLong) {
 	return strncmp(strShort, strLong, strlen(strShort)) == 0;
 }
 
-int d_clientSock;
-
-int d_init() {
-	printf("debug: begin d_init in server\n");
-
+int PASV() {
 	struct sockaddr_in d_myaddr;
 	bzero(&d_myaddr, sizeof(struct sockaddr_in));
 	d_myaddr.sin_family = AF_INET;
 	d_myaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-	d_myaddr.sin_port = htons(SERVER_PORT + 1000);
+	d_myaddr.sin_port = htons(LISTEN_PORT + 1000);
 	int d_sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	while (bind(d_sockfd, (struct sockaddr*) &d_myaddr,
 			sizeof(struct sockaddr_in)) < 0) {
-		printf("Bind data port error.\n");
+		cout << "Bind data port error.\n";
 		d_myaddr.sin_port = htons(ntohs(d_myaddr.sin_port) + 1);
 	}
 	if (listen(d_sockfd, 1) < 0) {
-		printf("Listen error.\n");
+		cout << "Listen error.\n";
 		return -1;
 	}
 
 	char temp[RESPSIZE];
-	sprintf(temp, "227 Entering Passive Mode (%d,%d,%d,%d,%d,%d)\r\n", IP[0],
-			IP[1], IP[2], IP[3], ntohs(d_myaddr.sin_port) >> 8,
-			ntohs(d_myaddr.sin_port) & 0xFF);
+	sprintf(temp, "227 Entering Passive Mode (%d,%d,%d,%d,%d,%d)\r\n",
+			local_ip[0], local_ip[1], local_ip[2], local_ip[3],
+			ntohs(d_myaddr.sin_port) >> 8, ntohs(d_myaddr.sin_port) & 0xFF);
 
-	printf(temp);
-	printf("debug: port %d\n", ntohs(d_myaddr.sin_port));
+	cout << temp;
+	cout << "port " << ntohs(d_myaddr.sin_port) << "\n";
 
-	sendResponseAll(temp);
+	FTP_SEND_RESP(temp);
 
-	printf("Listen\n");
+	cout << "Listen\n";
 
 	struct sockaddr_in d_clientaddr;
 	socklen_t sockLength = 0;
 
-	d_clientSock = accept(d_sockfd, (struct sockaddr*) &d_clientaddr,
+	data_clientsock = accept(d_sockfd, (struct sockaddr*) &d_clientaddr,
 			&sockLength);
-	if (d_clientSock < 0) {
-		printf("Accept error.\n");
+	if (data_clientsock < 0) {
+		cout << "Accept error.\n";
 		return -1;
 	} else {
-		printf("Data Connnection Accept.\n");
+		cout << "Data Connnection Accept.\n";
 		return 0;
 	}
 }
 
-char liststr[DBUFSIZE];
-int liststrLen = 0;
-
-char d_buf[DBUFSIZE];
-
-void mycd(char *dirname) {
+void FTP_CD(char *dirname) {
 	if (strcmp(dirname, ".") == 0) {
 		return;
 	} else if (strcmp(dirname, "..") == 0) {
@@ -143,74 +140,74 @@ void mycd(char *dirname) {
 		int l = strlen(work_dir);
 		strcat(work_dir, "/");
 		strcat(work_dir, dirname);
-		printf("debug: work_dir %s\n", work_dir);
+		cout << "debug: work_dir " << work_dir << "\n";
 		if (opendir(work_dir) == NULL) {
 			work_dir[l] = 0;
 		}
 	}
 }
 
-void genListStr() {
-	liststr[0] = 0;
-	liststrLen = 0;
-	strcat(liststr, "DIR\r\n=================\r\n");
+void FILL_LIST_BUF() {
+	list_buf[0] = 0;
+	list_buf_size = 0;
+	strcat(list_buf, "DIR\r\n=================\r\n");
 
 	DIR *dp;
 	struct dirent *entry;
-	struct stat statbuf;
+	//	struct stat statbuf;
 
 	if ((dp = opendir(work_dir)) == NULL) {
 		return;
 	}
 
 	while ((entry = readdir(dp)) != NULL) {
-		strcat(liststr, entry->d_name);
-		strcat(liststr, "\r\n");
+		strcat(list_buf, entry->d_name);
+		strcat(list_buf, "\r\n");
 	}
 	closedir(dp);
 
-	strcat(liststr, "=================\r\n");
-	liststrLen = strlen(liststr);
+	strcat(list_buf, "=================\r\n");
+	list_buf_size = strlen(list_buf);
 }
 
-void d_mysend(FILE* d_f) {
+void SEND_FILE(FILE* d_f) {
 	if (d_f) {
 		while (1) {
-			int readlen = fread(d_buf, 1, DBUFSIZE, d_f);
+			int readlen = fread(data_buf, 1, DBUFSIZE, d_f);
 			if (readlen == 0)
 				break;
-			int sendlen = write(d_clientSock, d_buf, readlen);
+			int sendlen = write(data_clientsock, data_buf, readlen);
 			assert(readlen == sendlen);
 		}
-		printf("debug: d_clientSock %d\n", d_clientSock);
-		printf("debug: clientSock %d\n", clientSock);
-		close(d_clientSock);
+		cout << "data_clientsock is " << data_clientsock << endl
+				<< "clientsock is " << clientsock << endl;
+		close(data_clientsock);
 		fclose(d_f);
 	} else {
-		genListStr();
-		int sendlen = write(d_clientSock, liststr, liststrLen);
-		assert(liststrLen == sendlen);
-		close(d_clientSock);
+		FILL_LIST_BUF();
+		int sendlen = write(data_clientsock, list_buf, list_buf_size);
+		assert(list_buf_size == sendlen);
+		close(data_clientsock);
 	}
 
 }
 
-void d_myreceive(FILE* d_f) {
+void RECV_FILE(FILE* d_f) {
 	while (1) {
-		int recvlen = read(d_clientSock, d_buf, DBUFSIZE);
-		printf("debug: recv %d bytes\n", recvlen);
+		int recvlen = read(data_clientsock, data_buf, DBUFSIZE);
+		cout << "recv " << recvlen << " bytes\n";
 		if (recvlen == 0)
 			break;
-		d_buf[recvlen] = 0;
-		fwrite(d_buf, 1, recvlen, d_f);
+		data_buf[recvlen] = 0;
+		fwrite(data_buf, 1, recvlen, d_f);
 	}
 
-	printf("debug: d_clientSock %d\n", d_clientSock);
-	printf("debug: clientSock %d\n", clientSock);
-	printf("debug: d_f %d\n", d_f);
+	cout << "data_clientsock is " << data_clientsock << endl
+			<< "clientsock is " << clientsock << endl << "file is " << d_f
+			<< endl;
 
 	fclose(d_f);
-	close(d_clientSock);
+	close(data_clientsock);
 }
 
 int start_server() {
@@ -218,151 +215,146 @@ int start_server() {
 	bzero(&myaddr, sizeof(struct sockaddr_in));
 	myaddr.sin_family = AF_INET;
 	myaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-	myaddr.sin_port = htons(SERVER_PORT);
+	myaddr.sin_port = htons(LISTEN_PORT);
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (bind(sockfd, (struct sockaddr*) &myaddr, sizeof(struct sockaddr_in))
 			< 0) {
-		printf("Bind error.\n");
+		//		cout << "Bind error.\n";
 		wait(5);
 		return -1;
 	}
 
-	printf("Bind\n");
-
 	if (listen(sockfd, 1) < 0) {
-		printf("Listen error.\n");
+		cout << "Listen error.\n";
 		return -1;
 	}
-
-	printf("Listen\n");
 
 	struct sockaddr_in clientaddr;
 	socklen_t sockLength = 0;
 
-	clientSock = accept(sockfd, (struct sockaddr*) &clientaddr, &sockLength);
-	if (clientSock < 0) {
-		printf("Accept error.\n");
+	clientsock = accept(sockfd, (struct sockaddr*) &clientaddr, &sockLength);
+	if (clientsock < 0) {
+		cout << "Error accept client socket.";
 		return -1;
 	}
 
-	printf("Accept\n");
-	sendResponse(_SVCREADYFORNEWU);
+	SEND_RESP(_SVCREADYFORNEWU);
 
 	char user[LOGINBUFSIZE];
 	char password[LOGINBUFSIZE];
 
 	while (1) {
-		getRequest();
-		if (strcmp("USER anonymous\r\n", buf) == 0) {
-			strcpy(user, buf + 5);
-			printf("UserName: %s\n", user);
-			sendResponse(_LOGGEDIN);
+		GET_RQST();
+		if (strcmp("USER anonymous\r\n", ctrl_buffer) == 0) {
+			strcpy(user, ctrl_buffer + 5);
+			cout << "USER " << user << endl;
+			SEND_RESP(_LOGGEDIN);
 			break;
-		} else if (strbegins("USER ", buf)) {
-			strcpy(user, buf + 5);
-			sendResponse(_USERNAMEOK);
+		} else if (begin_with("USER ", ctrl_buffer)) {
+			strcpy(user, ctrl_buffer + 5);
+			SEND_RESP(_USERNAMEOK);
 			while (1) {
-				getRequest();
-				if (strbegins("PASS ", buf)) {
-					strcpy(password, buf + 5);
-					printf("UserName: %s\n", user);
-					printf("Password: %s\n", password);
-					sendResponse(_LOGGEDIN);
+				GET_RQST();
+				if (begin_with("PASS ", ctrl_buffer)) {
+					strcpy(password, ctrl_buffer + 5);
+					cout << "PASS " << password << endl;
+					SEND_RESP(_LOGGEDIN);
 					break;
 				} else
-					sendResponse(_NOTLOGGEDIN);
+					SEND_RESP(_NOTLOGGEDIN);
 			}
 			break;
 		} else
-			sendResponse(_NOTLOGGEDIN);
+			SEND_RESP(_NOTLOGGEDIN);
 	}
 
-	printf("Begin ftp service\n");
+	cout << "FTP service ready.";
 
 	char temp[CMDSIZE + ARGSIZE];
 	while (1) {
-		getRequest();
-		if (strcmp("QUIT\r\n", buf) == 0) {
-			sendResponse(_CLOSECTRLCON);
+		GET_RQST();
+		if (strcmp("QUIT\r\n", ctrl_buffer) == 0) {
+			SEND_RESP(_CLOSECTRLCON);
 			break;
-		} else if (strcmp("TYPE I\r\n", buf) == 0) {
-			sendResponse(_CMDOK);
-		} else if (strcmp("TYPE A\r\n", buf) == 0) {
-			printf("debug: deal TYPE A\n");
-			sendResponse(_CMDOK);
-		} else if (strcmp("PWD\r\n", buf) == 0) {
+		} else if (strcmp("TYPE I\r\n", ctrl_buffer) == 0) {
+			SEND_RESP(_CMDOK);
+		} else if (strcmp("TYPE A\r\n", ctrl_buffer) == 0) {
+			cout << "TYPE A\n";
+			SEND_RESP(_CMDOK);
+		} else if (strcmp("PWD\r\n", ctrl_buffer) == 0) {
 			if (strcmp(work_dir, ".") == 0)
 				sprintf(temp, "257 \"/\" is current directory.\r\n");
 			else
 				sprintf(temp, "257 \"%s\" is current directory.\r\n", work_dir
 						+ 1);
-			sendResponseAll(temp);
-		} else if (strbegins("CWD ", buf)) {
-			strcpy(temp, buf + 4);
+			FTP_SEND_RESP(temp);
+		} else if (begin_with("CWD ", ctrl_buffer)) {
+			strcpy(temp, ctrl_buffer + 4);
 			int t = strlen(temp) - 2;
 			temp[t] = 0;
-			printf("debug: dirname %s\n", temp);
-			mycd(temp);
-			//			sendResponseAll("250 CWD command successful.\r\n");
-			sendResponse(_FILEACTOK);
-		} else if (strcmp("PASV\r\n", buf) == 0) {
-			if (d_init() < 0) {
-				printf("PASV fail!\n");
+			cout << "CWD " << temp << endl;
+			FTP_CD(temp);
+			//			FTP_SEND_RESP("250 CWD command successful.\r\n");
+			SEND_RESP(_FILEACTOK);
+		} else if (strcmp("PASV\r\n", ctrl_buffer) == 0) {
+			if (PASV() < 0) {
+				cout << "Error entering PASV mode.";
 				break;
 			}
-		} else if (strcmp("LIST\r\n", buf) == 0) {
-			sendResponse(_FILESTATUSOK);
-			d_mysend(0);
-			sendResponse(_DATACONCLOSE);
-		} else if (strbegins("RETR ", buf)) {
+		} else if (strcmp("LIST\r\n", ctrl_buffer) == 0) {
+			SEND_RESP(_FILESTATUSOK);
+			SEND_FILE(0);
+			SEND_RESP(_DATACONCLOSE);
+		} else if (begin_with("RETR ", ctrl_buffer)) {
 			strcpy(temp, work_dir);
 			strcat(temp, "/");
-			strcat(temp, buf + 5);
+			strcat(temp, ctrl_buffer + 5);
 			int t = strlen(temp) - 2;
 			temp[t] = 0;
-			printf("debug: filename %s\n", temp);
+			cout << "RETR " << temp << endl;
 
 			FILE *f = fopen(temp, "rb");
 
-			sendResponse(_FILESTATUSOK);
-			d_mysend(f);
-			sendResponse(_DATACONCLOSE);
+			SEND_RESP(_FILESTATUSOK);
+			SEND_FILE(f);
+			SEND_RESP(_DATACONCLOSE);
 
-		} else if (strbegins("STOR ", buf)) {
+		} else if (begin_with("STOR ", ctrl_buffer)) {
 			strcpy(temp, work_dir);
 			strcat(temp, "/");
-			strcat(temp, buf + 5);
+			strcat(temp, ctrl_buffer + 5);
 			int t = strlen(temp) - 2;
 			temp[t] = 0;
-			printf("debug: filename %s\n", temp);
+			cout << "STOR " << temp << endl;
 
 			FILE *f = fopen(temp, "wb");
 
-			sendResponse(_FILESTATUSOK);
-			backup = clientSock;
-			d_myreceive(f);
-			clientSock = backup;
-			sendResponse(_DATACONCLOSE);
+			SEND_RESP(_FILESTATUSOK);
+			clientsock_orig = clientsock;
+			RECV_FILE(f);
+			clientsock = clientsock_orig;
+			SEND_RESP(_DATACONCLOSE);
 		} else {
-			printf("debug: Not support: \"%s\"\n", buf);
-			sendResponse(_CMDNOTIMPLEMENTED);
+			printf("debug: Not support: \"%s\"\n", ctrl_buffer);
+			SEND_RESP(_CMDNOTIMPLEMENTED);
 		}
 	}
 
-	close(clientSock);
-	close(sockfd);
+	close(clientsock);
 	return 1;
 }
 int reset() {
-	close(clientSock);
+	close(clientsock);
 	close(sockfd);
-	memset(buf, 0, BUFSIZE + 1);
-	req_len = 0;
+	memset(ctrl_buffer, 0, BUFSIZE + 1);
+	recv_bytes = 0;
 	sockfd = 0;
-	clientSock = 0;
-	backup = 0;
+	clientsock = 0;
+	clientsock_orig = 0;
 	memset(work_dir, 0, DIRSIZE);
 	strcpy(work_dir, ".");
+
+	return 0;
 }
 
 int main() {

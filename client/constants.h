@@ -9,8 +9,11 @@
 #define CONSTANTS_H_
 
 #define DEBUG_OUTPUT
-#define DEBUG_HDR			" Debug output message \n"
-#define DEBUG_TAIL			"\n End of debug output message \n"
+#define DEBUG_HDR			"\t Debug output message \n\t"
+#define DEBUG_TAIL			"\n\t End of debug output message \n"
+
+#define USAGE_HDR			"\t Usage information \n"
+#define USAGE_TAIL			"\n\t End of usage information \n"
 
 #define BUFSIZE					4096
 #define DBUFSIZE				8192
@@ -19,6 +22,8 @@
 #define CMDSIZE					512
 #define ARGSIZE					512
 #define RESPSIZE				81923
+
+#define WAIT_TIME				5000000
 
 #define IP_ADDR					1
 #define HOSTNAME_ADDR			2
@@ -68,5 +73,16 @@
 #define RECV_ERROR				-105
 #define SENDCMD_ERROR			-106
 #define RECVRESP_ERROR			-107
+#define PASV_ERROR				-108
+#define USERNAME_ERROR			-109
+#define ANONYM_ERROR			-110
+
+#define RECV_LEN				-200
+#define RECEIVING				-201
+#define INITDATACON				-202
+#define SHOW_DATA_PORT			-203
+#define SHOW_PORT				-204
+#define SHOW_CMD				-205
+#define SHOW_DBUF				-206
 
 #endif /* CONSTANTS_H_ */
