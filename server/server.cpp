@@ -1,7 +1,7 @@
 /*
  * server.cpp
  *
- *  Created on: Jun 3, 2009
+ *  Created on: Jun 1, 2009
  *      Author: Q
  */
 #include <sys/socket.h>
@@ -44,8 +44,8 @@ int backup;
 
 char work_dir[DIRSIZE] = ".";
 
-void wait() {
-	int intval = 5000000;
+void wait(const int time = 1) {
+	int intval = 5000000* time ;
 	while (intval--)
 		;
 }
@@ -213,7 +213,7 @@ void d_myreceive(FILE* d_f) {
 	close(d_clientSock);
 }
 
-int main() {
+int start_server() {
 	struct sockaddr_in myaddr;
 	bzero(&myaddr, sizeof(struct sockaddr_in));
 	myaddr.sin_family = AF_INET;
@@ -223,6 +223,7 @@ int main() {
 	if (bind(sockfd, (struct sockaddr*) &myaddr, sizeof(struct sockaddr_in))
 			< 0) {
 		printf("Bind error.\n");
+		wait(5);
 		return -1;
 	}
 
@@ -245,7 +246,7 @@ int main() {
 	}
 
 	printf("Accept\n");
-	sendResponse(220);
+	sendResponse(_SVCREADYFORNEWU);
 
 	char user[LOGINBUFSIZE];
 	char password[LOGINBUFSIZE];
@@ -255,25 +256,25 @@ int main() {
 		if (strcmp("USER anonymous\r\n", buf) == 0) {
 			strcpy(user, buf + 5);
 			printf("UserName: %s\n", user);
-			sendResponse(230);
+			sendResponse(_LOGGEDIN);
 			break;
 		} else if (strbegins("USER ", buf)) {
 			strcpy(user, buf + 5);
-			sendResponse(331);
+			sendResponse(_USERNAMEOK);
 			while (1) {
 				getRequest();
 				if (strbegins("PASS ", buf)) {
 					strcpy(password, buf + 5);
 					printf("UserName: %s\n", user);
 					printf("Password: %s\n", password);
-					sendResponse(230);
+					sendResponse(_LOGGEDIN);
 					break;
 				} else
-					sendResponse(502);
+					sendResponse(_NOTLOGGEDIN);
 			}
 			break;
 		} else
-			sendResponse(502);
+			sendResponse(_NOTLOGGEDIN);
 	}
 
 	printf("Begin ftp service\n");
@@ -282,13 +283,13 @@ int main() {
 	while (1) {
 		getRequest();
 		if (strcmp("QUIT\r\n", buf) == 0) {
-			sendResponse(221);
+			sendResponse(_CLOSECTRLCON);
 			break;
 		} else if (strcmp("TYPE I\r\n", buf) == 0) {
-			sendResponse(200);
+			sendResponse(_CMDOK);
 		} else if (strcmp("TYPE A\r\n", buf) == 0) {
 			printf("debug: deal TYPE A\n");
-			sendResponse(200);
+			sendResponse(_CMDOK);
 		} else if (strcmp("PWD\r\n", buf) == 0) {
 			if (strcmp(work_dir, ".") == 0)
 				sprintf(temp, "257 \"/\" is current directory.\r\n");
@@ -302,16 +303,17 @@ int main() {
 			temp[t] = 0;
 			printf("debug: dirname %s\n", temp);
 			mycd(temp);
-			sendResponseAll("250 CWD command successful.\r\n");
+			//			sendResponseAll("250 CWD command successful.\r\n");
+			sendResponse(_FILEACTOK);
 		} else if (strcmp("PASV\r\n", buf) == 0) {
 			if (d_init() < 0) {
 				printf("PASV fail!\n");
 				break;
 			}
 		} else if (strcmp("LIST\r\n", buf) == 0) {
-			sendResponse(150);
+			sendResponse(_FILESTATUSOK);
 			d_mysend(0);
-			sendResponse(226);
+			sendResponse(_DATACONCLOSE);
 		} else if (strbegins("RETR ", buf)) {
 			strcpy(temp, work_dir);
 			strcat(temp, "/");
@@ -322,9 +324,9 @@ int main() {
 
 			FILE *f = fopen(temp, "rb");
 
-			sendResponse(150);
+			sendResponse(_FILESTATUSOK);
 			d_mysend(f);
-			sendResponse(226);
+			sendResponse(_DATACONCLOSE);
 
 		} else if (strbegins("STOR ", buf)) {
 			strcpy(temp, work_dir);
@@ -336,18 +338,38 @@ int main() {
 
 			FILE *f = fopen(temp, "wb");
 
-			sendResponse(150);
+			sendResponse(_FILESTATUSOK);
 			backup = clientSock;
 			d_myreceive(f);
 			clientSock = backup;
-			sendResponse(226);
+			sendResponse(_DATACONCLOSE);
 		} else {
 			printf("debug: Not support: \"%s\"\n", buf);
-			sendResponse(502);
+			sendResponse(_CMDNOTIMPLEMENTED);
 		}
 	}
 
 	close(clientSock);
 	close(sockfd);
+	return 1;
+}
+int reset() {
+	close(clientSock);
+	close(sockfd);
+	memset(buf, 0, BUFSIZE + 1);
+	req_len = 0;
+	sockfd = 0;
+	clientSock = 0;
+	backup = 0;
+	memset(work_dir, 0, DIRSIZE);
+	strcpy(work_dir, ".");
+}
+
+int main() {
+	while (true) {
+		reset();
+		wait(20);
+		start_server();
+	}
 	return 0;
 }

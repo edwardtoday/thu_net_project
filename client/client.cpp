@@ -1,7 +1,7 @@
 /*
  * client.cpp
  *
- *  Created on: Jun 4, 2009
+ *  Created on: May 28, 2009
  *      Author: Q
  */
 
@@ -145,7 +145,7 @@ int log_in_user_pass(char* user, char* pass) {
 	sprintf(cmd, "USER %s\r\n", user);
 	sendCmd(cmd);
 	myrecv();
-	if (getCmdNum() != 331) {
+	if (getCmdNum() != _USERNAMEOK) {
 		printf("user is not allowed, quit.\n");
 		close(sockfd);
 		return -1;
@@ -156,7 +156,7 @@ int log_in_user_pass(char* user, char* pass) {
 	sprintf(cmd, "PASS %s\r\n", pass);
 	sendCmd(cmd);
 	myrecv();
-	if (getCmdNum() != 230) {
+	if (getCmdNum() != _LOGGEDIN) {
 		printf("Wrong password, quit.\n");
 		close(sockfd);
 		return -1;
@@ -169,7 +169,7 @@ int log_in_user_pass(char* user, char* pass) {
 int log_in_anonymous() {
 	sendCmd("USER anonymous\r\n");
 	myrecv();
-	if (getCmdNum() != 230) {
+	if (getCmdNum() != _LOGGEDIN) {
 		printf("Anonymous user is not allowed, quit.\n");
 		close(sockfd);
 		return -1;
@@ -203,7 +203,7 @@ int main(int argc, char** argv) {
 		return -1;
 	}
 	myrecv();
-	if (getCmdNum() != 220) {
+	if (getCmdNum() != _SVCREADYFORNEWU) {
 		printf("Not success, quit.\n");
 		close(sockfd);
 		return -1;
@@ -233,18 +233,19 @@ int main(int argc, char** argv) {
 		} else if (strcmp(cmd, "quit") == 0) {
 			sendCmd("QUIT\r\n");
 			myrecv();
-			if (getCmdNum() != 221) {
+			if (getCmdNum() != _CLOSECTRLCON) {
 				printf("Goodbye response error.\n");
 			}
 			break;
 		} else if (strcmp(cmd, "get") == 0) {
 			char filename[200];
 			scanf("%s", filename);
+			//			scanf("%255[^\n]", filename);
 			printf("debug: filename %s\n", filename);
 
 			sendCmd("TYPE I\r\n");
 			myrecv();
-			if (getCmdNum() != 200) {
+			if (getCmdNum() != _CMDOK) {
 				printf("get error.\n");
 			}
 
@@ -252,7 +253,7 @@ int main(int argc, char** argv) {
 			 sprintf(cmd, "SIZE %s\r\n", filename);
 			 sendCmd(cmd);
 			 myrecv();
-			 if(getCmdNum() != 213)
+			 if(getCmdNum() != _FILESTAT)
 			 {
 			 printf("get response error.\n");
 			 }*/
@@ -262,7 +263,7 @@ int main(int argc, char** argv) {
 			sprintf(cmd, "RETR %s\r\n", filename);
 			sendCmd(cmd);
 			myrecv();
-			if (getCmdNum() != 150) {
+			if (getCmdNum() != _FILESTATUSOK) {
 				printf("get response error.\n");
 			}
 
@@ -270,7 +271,7 @@ int main(int argc, char** argv) {
 			d_myrecv(f);
 
 			myrecv();
-			if (getCmdNum() != 226) {
+			if (getCmdNum() != _DATACONCLOSE) {
 				printf("get response error.\n");
 			}
 
@@ -279,11 +280,12 @@ int main(int argc, char** argv) {
 		} else if (strcmp(cmd, "put") == 0) {
 			char filename[200];
 			scanf("%s", filename);
+			//			scanf("%255[^\n]", filename);
 			printf("debug: filename %s\n", filename);
 
 			sendCmd("TYPE I\r\n");
 			myrecv();
-			if (getCmdNum() != 200) {
+			if (getCmdNum() != _CMDOK) {
 				printf("get error.\n");
 			}
 
@@ -293,7 +295,7 @@ int main(int argc, char** argv) {
 			sendCmd(cmd);
 			myrecv();
 
-			if (getCmdNum() != 150) {
+			if (getCmdNum() != _FILESTATUSOK) {
 				printf("get response error.\n");
 			}
 
@@ -303,7 +305,7 @@ int main(int argc, char** argv) {
 			printf("debug: send done.\n");
 
 			myrecv();
-			if (getCmdNum() != 226) {
+			if (getCmdNum() != _DATACONCLOSE) {
 				printf("get response error.\n");
 			}
 
@@ -311,13 +313,13 @@ int main(int argc, char** argv) {
 		} else if (strcmp(cmd, "pwd") == 0) {
 			sendCmd("PWD\r\n");
 			myrecv();
-			if (getCmdNum() != 257) {
+			if (getCmdNum() != _PATHNAMECREATED) {
 				printf("PWD response error.\n");
 			}
 		} else if (strcmp(cmd, "dir") == 0) {
 			sendCmd("TYPE A\r\n");
 			myrecv();
-			if (getCmdNum() != 200) {
+			if (getCmdNum() != _CMDOK) {
 				printf("dir error.\n");
 			}
 
@@ -327,14 +329,14 @@ int main(int argc, char** argv) {
 
 			sendCmd("LIST\r\n");
 			myrecv();
-			if (getCmdNum() != 150) {
+			if (getCmdNum() != _FILESTATUSOK) {
 				printf("dir error.\n");
 			}
 
 			d_myrecv(0);
 
 			myrecv();
-			if (getCmdNum() != 226) {
+			if (getCmdNum() != _DATACONCLOSE) {
 				printf("dir error.\n");
 			}
 
@@ -343,12 +345,13 @@ int main(int argc, char** argv) {
 			}
 		} else if (strcmp(cmd, "cd") == 0) {
 			//#TODO add space support
-			char dirname[200];
-			scanf("%s", dirname);
-			sprintf(cmd, "CWD %s\r\n", dirname);
+			char dirname[DIRSIZE];
+			//			scanf("%s", dirname);
+			scanf("%255[^\n]", dirname);
+			sprintf(cmd, "CWD %s\r\n", dirname + 1);
 			sendCmd(cmd);
 			myrecv();
-			if (getCmdNum() != 250) {
+			if (getCmdNum() != _FILEACTOK) {
 				printf("CWD response error.\n");
 			}
 		} else {
