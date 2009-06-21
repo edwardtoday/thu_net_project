@@ -3,6 +3,10 @@
  *
  *  Created on: May 28, 2009
  *      Author: Q
+ *
+ *
+ * usage:
+ * 		./client server_ip port username password
  */
 
 #include <arpa/inet.h>
@@ -143,7 +147,8 @@ int usage(const int type = 1) {
 	cout << USAGE_TAIL;
 	return 0;
 }
-void send_ctrl_buffer()//send buffer
+
+void send_ctrl_buffer()
 {
 	ctrl_buffer[send_bytes] = 0;
 	debug_msg(SHOW_CMD);
@@ -296,15 +301,6 @@ int ftp_get() {
 	if (ftp_code() != _CMDOK)
 		debug_msg(_CMDERROR);
 
-	/*
-	 sprintf(cmd, "SIZE %s\r\n", filename);
-	 send_cmd(cmd);
-	 recv_ctrl_buffer();
-	 if(ftp_code() != _FILESTAT)
-	 {
-	 printf("get response error.\n");
-	 }*/
-
 	pasv();
 
 	sprintf(cmd, "RETR %s\r\n", filename);
@@ -323,6 +319,7 @@ int ftp_get() {
 	fclose(f);
 	return 0;
 }
+
 int ftp_cd() {
 	char dirname[DIRSIZE];
 	scanf("%255[^\n]", dirname);
@@ -333,6 +330,7 @@ int ftp_cd() {
 		debug_msg(ftp_code());
 	return 0;
 }
+
 int ftp_dir() {
 	send_cmd("TYPE A\r\n");
 	recv_ctrl_buffer();
@@ -356,6 +354,7 @@ int ftp_dir() {
 		debug_msg(_DATACONCLOSE);
 	return 0;
 }
+
 int ftp_pwd() {
 	send_cmd("PWD\r\n");
 	recv_ctrl_buffer();
@@ -363,6 +362,7 @@ int ftp_pwd() {
 		debug_msg(_CMDERROR);
 	return 0;
 }
+
 int ftp_put() {
 	char filename[200];
 	scanf("%s", filename);
@@ -392,6 +392,7 @@ int ftp_put() {
 	fclose(f);
 	return 0;
 }
+
 int main(int argc, char** argv) {
 	if (argc != 1 && argc != 3 && argc != 5) {
 		usage(0);

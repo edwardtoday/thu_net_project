@@ -21,7 +21,7 @@
 #define LOGINBUFSIZE			64
 #define CMDSIZE					512
 #define ARGSIZE					512
-#define RESPSIZE				81923
+#define RESPSIZE				8192
 
 #define WAIT_TIME				5000000
 

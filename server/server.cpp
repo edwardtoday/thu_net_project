@@ -51,6 +51,7 @@ void wait(const int time = 1) {
 	while (intval--)
 		;
 }
+
 void FTP_SEND_RESP(char* Res) {
 	wait();
 	write(clientsock, Res, strlen(Res));
